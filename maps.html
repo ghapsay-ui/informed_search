@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surigao City 33 Barangays - A* vs Greedy Best-First Pathfinding</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .stats-banner {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px 20px;
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 25px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .control-item label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+        
+        .control-item select, .control-item input {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-item select:hover, .control-item input:hover {
+            border-color: #667eea;
+        }
+        
+        .control-item input[type="range"] {
+            width: 150px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: auto;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-greedy {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-greedy:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+        
+        .btn-astar {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-astar:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+        
+        .btn-reset {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #5a6268;
+        }
+        
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 20px;
+            padding: 25px;
+        }
+        
+        .map-container {
+            height: 700px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .progress-overlay {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+            text-align: center;
+        }
+        
+        .progress-overlay.active {
+            display: block;
+        }
+        
+        .progress-title {
+            font-weight: 700;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+        
+        .progress-step {
+            font-size: 0.95em;
+            color: #555;
+        }
+        
+        .results-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            max-height: 700px;
+        }
+        
+        .result-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-left: 5px solid #ddd;
+        }
+        
+        .result-card.greedy {
+            border-left-color: #f5576c;
+        }
+        
+        .result-card.astar {
+            border-left-color: #00f2fe;
+        }
+        
+        .result-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .result-card.greedy h3 {
+            color: #f5576c;
+        }
+        
+        .result-card.astar h3 {
+            color: #00a0fe;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .metric-value {
+            color: #2c3e50;
+            font-weight: 700;
+        }
+        
+        .expansion-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .expansion-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: white;
+            border-radius: 5px;
+            font-size: 0.9em;
+            border-left: 3px solid #667eea;
+            transition: all 0.3s;
+        }
+        
+        .expansion-item.current {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            transform: scale(1.02);
+        }
+        
+        .legend {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .legend h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+        }
+        
+        .pulse-marker {
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        @media (max-width: 1400px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .map-container {
+                height: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗺️ Surigao City Pathfinding Visualizer</h1>
+            <p>33 Mainland Barangays - A* Search vs Greedy Best-First Search</p>
+        </header>
+        
+        <div class="stats-banner">
+            <div class="stat-item">
+                <div class="stat-value">33</div>
+                <div class="stat-label">Barangays</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">176</div>
+                <div class="stat-label">Road Connections</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="maxSLD">19.2</div>
+                <div class="stat-label">Max Distance (km)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">Taft (Pob.)</div>
+                <div class="stat-label">Goal Barangay</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="startNode">Start Barangay:</label>
+                    <select id="startNode"></select>
+                </div>
+                
+                <div class="control-item">
+                    <label>Goal Barangay:</label>
+                    <select disabled>
+                        <option>Taft (Pob.) 🎯</option>
+                    </select>
+                </div>
+                
+                <div class="control-item">
+                    <label for="animationSpeed">Animation Speed:</label>
+                    <input type="range" id="animationSpeed" min="200" max="2000" value="600" step="100">
+                    <span id="speedLabel">600ms</span>
+                </div>
+                
+                <button class="btn-greedy" id="btnGreedy" onclick="runGreedy()">
+                    🔍 Run Greedy Best-First
+                </button>
+                
+                <button class="btn-astar" id="btnAstar" onclick="runAStar()">
+                    ⭐ Run A* Search
+                </button>
+                
+                <button class="btn-reset" onclick="resetVisualization()">
+                    🔄 Reset
+                </button>
+            </div>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="progress-overlay" id="progressOverlay">
+                    <div class="progress-title" id="progressTitle"></div>
+                    <div class="progress-step" id="progressStep"></div>
+                </div>
+            </div>
+            
+            <div class="results-panel">
+                <div class="result-card greedy" id="greedyResults" style="display:none;">
+                    <h3>🔍 Greedy Best-First Search</h3>
+                    <div id="greedyMetrics"></div>
+                    <div class="expansion-list" id="greedyExpansions"></div>
+                </div>
+                
+                <div class="result-card astar" id="astarResults" style="display:none;">
+                    <h3>⭐ A* Search</h3>
+                    <div id="astarMetrics"></div>
+                    <div class="expansion-list" id="astarExpansions"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <h4>Legend</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff4444;"></div>
+            <span>Start Node</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ff00;"></div>
+            <span>Goal Node</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ffaa00;"></div>
+            <span>Exploring</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #888888;"></div>
+            <span>Visited</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #f5576c;"></div>
+            <span>Greedy Path</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00f2fe;"></div>
+            <span>A* Path</span>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 33 Mainland Barangays Data with accurate GPS coordinates
+        const barangays = {
+            "Taft (Pob.)": {"lat": 9.7847, "lon": 125.4975},
+            "Washington (Pob.)": {"lat": 9.7843, "lon": 125.4887},
+            "San Juan (Pob.)": {"lat": 9.7904, "lon": 125.4839},
+            "Luna (Pob.)": {"lat": 9.7671, "lon": 125.4833},
+            "Canlanipa (Pob.)": {"lat": 9.7759, "lon": 125.4928},
+            "Cagniog": {"lat": 9.7619, "lon": 125.5045},
+            "Ipil": {"lat": 9.7928, "lon": 125.5107},
+            "Lipata": {"lat": 9.8128, "lon": 125.4553},
+            "Mabua": {"lat": 9.8067, "lon": 125.5289},
+            "Punta Bilar": {"lat": 9.8227, "lon": 125.4443},
+            "Rizal": {"lat": 9.7823, "lon": 125.4633},
+            "Sabang": {"lat": 9.7758, "lon": 125.5142},
+            "Togbongon": {"lat": 9.7556, "lon": 125.5201},
+            "Alang-alang": {"lat": 9.6989, "lon": 125.5423},
+            "Alegria": {"lat": 9.7145, "lon": 125.5678},
+            "Anomar": {"lat": 9.8345, "lon": 125.5512},
+            "Balibayon": {"lat": 9.8423, "lon": 125.5234},
+            "Baybay": {"lat": 9.7234, "lon": 125.5845},
+            "Bitaugan": {"lat": 9.7089, "lon": 125.5989},
+            "Bonifacio": {"lat": 9.7381, "lon": 125.4960},
+            "Buenavista": {"lat": 9.6923, "lon": 125.6123},
+            "Cabongbongan": {"lat": 9.8556, "lon": 125.5678},
+            "Cantiasay": {"lat": 9.7223, "lon": 125.6234},
+            "Capalayan": {"lat": 9.8189, "lon": 125.5823},
+            "Catadman": {"lat": 9.7334, "lon": 125.6445},
+            "Day-asan": {"lat": 9.7812, "lon": 125.5445},
+            "Libuac": {"lat": 9.7445, "lon": 125.6678},
+            "Mabini": {"lat": 9.8612, "lon": 125.5345},
+            "Mapawa": {"lat": 9.8467, "lon": 125.5912},
+            "Mat-i": {"lat": 9.6734, "lon": 125.5234},
+            "Nabago": {"lat": 9.7344, "lon": 125.5640},
+            "Orok": {"lat": 9.8734, "lon": 125.5123},
+            "Silop": {"lat": 9.7512, "lon": 125.5789}
+        };
+        
+        // SLD heuristic values to goal (Taft Pob.) in kilometers
+        const heuristic = {
+            "Alang-alang": 10.729714119936057,
+            "Alegria": 10.967453518870366,
+            "Anomar": 8.07984257793717,
+            "Balibayon": 7.005353329755701,
+            "Baybay": 11.720091535013907,
+            "Bitaugan": 13.947279891611945,
+            "Bonifacio": 5.184290186988479,
+            "Buenavista": 16.243487293986306,
+            "Cabongbongan": 11.021844549866081,
+            "Cagniog": 2.648746376313441,
+            "Canlanipa (Pob.)": 1.105775094658109,
+            "Cantiasay": 15.443552479105644,
+            "Capalayan": 10.039781466241788,
+            "Catadman": 17.08925966104096,
+            "Day-asan": 5.165048433471206,
+            "Ipil": 1.7042659482270652,
+            "Libuac": 19.189953298619707,
+            "Lipata": 5.581050062388883,
+            "Luna (Pob.)": 2.5002461712166815,
+            "Mabini": 9.423215050203097,
+            "Mabua": 4.222199969092794,
+            "Mapawa": 12.365726048071163,
+            "Mat-i": 12.696617706584885,
+            "Nabago": 9.186163997603544,
+            "Orok": 9.995133447715456,
+            "Punta Bilar": 7.199545555079542,
+            "Rizal": 3.757050880414333,
+            "Sabang": 2.0803866529633226,
+            "San Juan (Pob.)": 1.619423254757057,
+            "Silop": 9.667372867178698,
+            "Taft (Pob.)": 0.0,
+            "Togbongon": 4.074983697163765,
+            "Washington (Pob.)": 0.9653070196800886
+        };
+        
+        // Road network with actual distances
+        const roadNetworkData = {
+            "Taft (Pob.)": [
+                {"neighbor": "Washington (Pob.)", "distance": 1.2},
+                {"neighbor": "San Juan (Pob.)", "distance": 2.0},
+                {"neighbor": "Canlanipa (Pob.)", "distance": 1.4},
+                {"neighbor": "Cagniog", "distance": 3.2},
+                {"neighbor": "Sabang", "distance": 2.5}
+            ],
+            "Washington (Pob.)": [
+                {"neighbor": "Taft (Pob.)", "distance": 1.2},
+                {"neighbor": "San Juan (Pob.)", "distance": 1.8},
+                {"neighbor": "Luna (Pob.)", "distance": 2.6},
+                {"neighbor": "Rizal", "distance": 4.5},
+                {"neighbor": "Ipil", "distance": 3.2}
+            ],
+            "San Juan (Pob.)": [
+                {"neighbor": "Washington (Pob.)", "distance": 1.8},
+                {"neighbor": "Taft (Pob.)", "distance": 2.0},
+                {"neighbor": "Punta Bilar", "distance": 8.5},
+                {"neighbor": "Rizal", "distance": 5.2},
+                {"neighbor": "Lipata", "distance": 6.8}
+            ],
+            "Luna (Pob.)": [
+                {"neighbor": "Washington (Pob.)", "distance": 2.6},
+                {"neighbor": "Bonifacio", "distance": 6.2},
+                {"neighbor": "Rizal", "distance": 4.8},
+                {"neighbor": "Cagniog", "distance": 3.5},
+                {"neighbor": "Togbongon", "distance": 5.2}
+            ],
+            "Canlanipa (Pob.)": [
+                {"neighbor": "Taft (Pob.)", "distance": 1.4},
+                {"neighbor": "Cagniog", "distance": 2.8},
+                {"neighbor": "Bonifacio", "distance": 4.8},
+                {"neighbor": "Rizal", "distance": 3.2},
+                {"neighbor": "Sabang", "distance": 2.3}
+            ],
+            "Cagniog": [
+                {"neighbor": "Taft (Pob.)", "distance": 3.2},
+                {"neighbor": "Luna (Pob.)", "distance": 3.5},
+                {"neighbor": "Bonifacio", "distance": 4.5},
+                {"neighbor": "Canlanipa (Pob.)", "distance": 2.8},
+                {"neighbor": "Togbongon", "distance": 2.9},
+                {"neighbor": "Sabang", "distance": 1.8}
+            ],
+            "Ipil": [
+                {"neighbor": "Washington (Pob.)", "distance": 3.2},
+                {"neighbor": "Sabang", "distance": 1.9},
+                {"neighbor": "Mabua", "distance": 3.4},
+                {"neighbor": "Day-asan", "distance": 4.5},
+                {"neighbor": "Anomar", "distance": 5.8}
+            ],
+            "Lipata": [
+                {"neighbor": "San Juan (Pob.)", "distance": 6.8},
+                {"neighbor": "Punta Bilar", "distance": 3.2},
+                {"neighbor": "Rizal", "distance": 4.5},
+                {"neighbor": "Balibayon", "distance": 5.2},
+                {"neighbor": "Orok", "distance": 7.3}
+            ],
+            "Mabua": [
+                {"neighbor": "Ipil", "distance": 3.4},
+                {"neighbor": "Sabang", "distance": 2.2},
+                {"neighbor": "Day-asan", "distance": 2.8},
+                {"neighbor": "Anomar", "distance": 3.9},
+                {"neighbor": "Mabini", "distance": 4.7}
+            ],
+            "Punta Bilar": [
+                {"neighbor": "San Juan (Pob.)", "distance": 8.5},
+                {"neighbor": "Rizal", "distance": 6.5},
+                {"neighbor": "Lipata", "distance": 3.2},
+                {"neighbor": "Balibayon", "distance": 4.8},
+                {"neighbor": "Orok", "distance": 5.9}
+            ],
+            "Rizal": [
+                {"neighbor": "Washington (Pob.)", "distance": 4.5},
+                {"neighbor": "San Juan (Pob.)", "distance": 5.2},
+                {"neighbor": "Luna (Pob.)", "distance": 4.8},
+                {"neighbor": "Canlanipa (Pob.)", "distance": 3.2},
+                {"neighbor": "Punta Bilar", "distance": 6.5},
+                {"neighbor": "Lipata", "distance": 4.5}
+            ],
+            "Sabang": [
+                {"neighbor": "Taft (Pob.)", "distance": 2.5},
+                {"neighbor": "Canlanipa (Pob.)", "distance": 2.3},
+                {"neighbor": "Cagniog", "distance": 1.8},
+                {"neighbor": "Ipil", "distance": 1.9},
+                {"neighbor": "Mabua", "distance": 2.2},
+                {"neighbor": "Togbongon", "distance": 2.4},
+                {"neighbor": "Day-asan", "distance": 4.2}
+            ],
+            "Togbongon": [
+                {"neighbor": "Luna (Pob.)", "distance": 5.2},
+                {"neighbor": "Cagniog", "distance": 2.9},
+                {"neighbor": "Sabang", "distance": 2.4},
+                {"neighbor": "Alang-alang", "distance": 7.8},
+                {"neighbor": "Mat-i", "distance": 9.5},
+                {"neighbor": "Nabago", "distance": 6.7}
+            ],
+            "Alang-alang": [
+                {"neighbor": "Togbongon", "distance": 7.8},
+                {"neighbor": "Mat-i", "distance": 3.5},
+                {"neighbor": "Alegria", "distance": 2.8},
+                {"neighbor": "Nabago", "distance": 4.2},
+                {"neighbor": "Silop", "distance": 3.9}
+            ],
+            "Alegria": [
+                {"neighbor": "Alang-alang", "distance": 2.8},
+                {"neighbor": "Baybay", "distance": 2.5},
+                {"neighbor": "Bitaugan", "distance": 3.8},
+                {"neighbor": "Nabago", "distance": 4.6},
+                {"neighbor": "Silop", "distance": 3.2}
+            ],
+            "Anomar": [
+                {"neighbor": "Ipil", "distance": 5.8},
+                {"neighbor": "Mabua", "distance": 3.9},
+                {"neighbor": "Mabini", "distance": 2.9},
+                {"neighbor": "Balibayon", "distance": 2.8},
+                {"neighbor": "Cabongbongan", "distance": 3.5},
+                {"neighbor": "Capalayan", "distance": 4.2}
+            ],
+            "Balibayon": [
+                {"neighbor": "Lipata", "distance": 5.2},
+                {"neighbor": "Punta Bilar", "distance": 4.8},
+                {"neighbor": "Orok", "distance": 2.5},
+                {"neighbor": "Anomar", "distance": 2.8},
+                {"neighbor": "Mabini", "distance": 3.7},
+                {"neighbor": "Cabongbongan", "distance": 4.1}
+            ],
+            "Baybay": [
+                {"neighbor": "Alegria", "distance": 2.5},
+                {"neighbor": "Bitaugan", "distance": 2.9},
+                {"neighbor": "Cantiasay", "distance": 4.8},
+                {"neighbor": "Nabago", "distance": 3.9},
+                {"neighbor": "Silop", "distance": 3.6}
+            ],
+            "Bitaugan": [
+                {"neighbor": "Alegria", "distance": 3.8},
+                {"neighbor": "Baybay", "distance": 2.9},
+                {"neighbor": "Cantiasay", "distance": 3.2},
+                {"neighbor": "Buenavista", "distance": 4.5},
+                {"neighbor": "Libuac", "distance": 5.8},
+                {"neighbor": "Catadman", "distance": 3.9}
+            ],
+            "Bonifacio": [
+                {"neighbor": "Luna (Pob.)", "distance": 6.2},
+                {"neighbor": "Cagniog", "distance": 4.5},
+                {"neighbor": "Canlanipa (Pob.)", "distance": 4.8},
+                {"neighbor": "Mat-i", "distance": 7.8},
+                {"neighbor": "Alang-alang", "distance": 8.9}
+            ],
+            "Buenavista": [
+                {"neighbor": "Bitaugan", "distance": 4.5},
+                {"neighbor": "Cantiasay", "distance": 2.8},
+                {"neighbor": "Catadman", "distance": 3.4},
+                {"neighbor": "Libuac", "distance": 4.2}
+            ],
+            "Cabongbongan": [
+                {"neighbor": "Anomar", "distance": 3.5},
+                {"neighbor": "Balibayon", "distance": 4.1},
+                {"neighbor": "Mabini", "distance": 2.4},
+                {"neighbor": "Orok", "distance": 3.8},
+                {"neighbor": "Mapawa", "distance": 3.9},
+                {"neighbor": "Capalayan", "distance": 2.8}
+            ],
+            "Cantiasay": [
+                {"neighbor": "Baybay", "distance": 4.8},
+                {"neighbor": "Bitaugan", "distance": 3.2},
+                {"neighbor": "Buenavista", "distance": 2.8},
+                {"neighbor": "Catadman", "distance": 2.5},
+                {"neighbor": "Libuac", "distance": 2.9},
+                {"neighbor": "Nabago", "distance": 7.3}
+            ],
+            "Capalayan": [
+                {"neighbor": "Anomar", "distance": 4.2},
+                {"neighbor": "Cabongbongan", "distance": 2.8},
+                {"neighbor": "Mapawa", "distance": 2.6},
+                {"neighbor": "Day-asan", "distance": 5.8},
+                {"neighbor": "Silop", "distance": 6.7}
+            ],
+            "Catadman": [
+                {"neighbor": "Bitaugan", "distance": 3.9},
+                {"neighbor": "Buenavista", "distance": 3.4},
+                {"neighbor": "Cantiasay", "distance": 2.5},
+                {"neighbor": "Libuac", "distance": 3.1}
+            ],
+            "Day-asan": [
+                {"neighbor": "Sabang", "distance": 4.2},
+                {"neighbor": "Ipil", "distance": 4.5},
+                {"neighbor": "Mabua", "distance": 2.8},
+                {"neighbor": "Anomar", "distance": 6.5},
+                {"neighbor": "Nabago", "distance": 5.9},
+                {"neighbor": "Silop", "distance": 5.6},
+                {"neighbor": "Capalayan", "distance": 5.8}
+            ],
+            "Libuac": [
+                {"neighbor": "Bitaugan", "distance": 5.8},
+                {"neighbor": "Cantiasay", "distance": 2.9},
+                {"neighbor": "Catadman", "distance": 3.1},
+                {"neighbor": "Buenavista", "distance": 4.2}
+            ],
+            "Mabini": [
+                {"neighbor": "Anomar", "distance": 2.9},
+                {"neighbor": "Balibayon", "distance": 3.7},
+                {"neighbor": "Cabongbongan", "distance": 2.4},
+                {"neighbor": "Mabua", "distance": 4.7},
+                {"neighbor": "Orok", "distance": 2.8},
+                {"neighbor": "Mapawa", "distance": 4.5}
+            ],
+            "Mapawa": [
+                {"neighbor": "Cabongbongan", "distance": 3.9},
+                {"neighbor": "Capalayan", "distance": 2.6},
+                {"neighbor": "Mabini", "distance": 4.5},
+                {"neighbor": "Orok", "distance": 5.2}
+            ],
+            "Mat-i": [
+                {"neighbor": "Togbongon", "distance": 9.5},
+                {"neighbor": "Alang-alang", "distance": 3.5},
+                {"neighbor": "Bonifacio", "distance": 7.8}
+            ],
+            "Nabago": [
+                {"neighbor": "Togbongon", "distance": 6.7},
+                {"neighbor": "Alang-alang", "distance": 4.2},
+                {"neighbor": "Alegria", "distance": 4.6},
+                {"neighbor": "Baybay", "distance": 3.9},
+                {"neighbor": "Silop", "distance": 2.8},
+                {"neighbor": "Day-asan", "distance": 5.9},
+                {"neighbor": "Cantiasay", "distance": 7.3}
+            ],
+            "Orok": [
+                {"neighbor": "Lipata", "distance": 7.3},
+                {"neighbor": "Punta Bilar", "distance": 5.9},
+                {"neighbor": "Balibayon", "distance": 2.5},
+                {"neighbor": "Mabini", "distance": 2.8},
+                {"neighbor": "Cabongbongan", "distance": 3.8},
+                {"neighbor": "Mapawa", "distance": 5.2}
+            ],
+            "Silop": [
+                {"neighbor": "Alang-alang", "distance": 3.9},
+                {"neighbor": "Alegria", "distance": 3.2},
+                {"neighbor": "Baybay", "distance": 3.6},
+                {"neighbor": "Nabago", "distance": 2.8},
+                {"neighbor": "Day-asan", "distance": 5.6},
+                {"neighbor": "Capalayan", "distance": 6.7}
+            ]
+        };
+
+        const roadNetwork = {};
+        for (const [key, value] of Object.entries(roadNetworkData)) {
+            roadNetwork[key] = value;
+        }
+
+        const goal = "Taft (Pob.)";
+        let map, markers = {}, polylines = [], animationLayers = [];
+        let isAnimating = false;
+
+        // Populate start barangay dropdown
+        const startSelect = document.getElementById('startNode');
+        Object.keys(barangays).sort().forEach(name => {
+            if (name !== goal) {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                startSelect.appendChild(option);
+            }
+        });
+
+        // Update speed label
+        document.getElementById('animationSpeed').addEventListener('input', (e) => {
+            document.getElementById('speedLabel').textContent = e.target.value + 'ms';
+        });
+
+        // Initialize map
+        function initMap() {
+            // Center on Surigao City
+            map = L.map('map').setView([9.78, 125.52], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add barangay markers
+            Object.keys(barangays).forEach(name => {
+                const coords = barangays[name];
+                const isGoal = name === goal;
+                const color = isGoal ? 'green' : 'blue';
+                const icon = createMarkerIcon(color, 15);
+                
+                const marker = L.marker([coords.lat, coords.lon], {icon: icon})
+                    .bindPopup(`<b>${name}</b><br>SLD to Goal: ${heuristic[name].toFixed(3)} km`)
+                    .addTo(map);
+                
+                markers[name] = marker;
+            });
+
+            // Draw road network
+            Object.keys(roadNetwork).forEach(from => {
+                roadNetwork[from].forEach(edge => {
+                    const to = edge.neighbor;
+                    const fromCoords = barangays[from];
+                    const toCoords = barangays[to];
+                    
+                    L.polyline(
+                        [[fromCoords.lat, fromCoords.lon], [toCoords.lat, toCoords.lon]],
+                        {color: '#cccccc', weight: 1.5, opacity: 0.4}
+                    ).addTo(map);
+                });
+            });
+        }
+
+        function createMarkerIcon(color, size) {
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [size, size]
+            });
+        }
+
+        function createPulsingIcon(color, size) {
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="pulse-marker" style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 10px rgba(255,170,0,0.6);"></div>`,
+                iconSize: [size, size]
+            });
+        }
+
+        // Greedy Best-First Search
+        function greedyBestFirstSearch(start) {
+            const frontier = new MinHeap();
+            frontier.push({node: start, path: [start], cost: 0, f: heuristic[start], parent: null});
+            const visited = new Set();
+            const expansions = [];
+
+            while (!frontier.isEmpty()) {
+                const {node: current, path, cost, f, parent} = frontier.pop();
+                
+                if (visited.has(current)) continue;
+                
+                expansions.push({
+                    node: current,
+                    f: f,
+                    h: heuristic[current],
+                    g: cost,
+                    path: [...path],
+                    parent: parent
+                });
+                visited.add(current);
+
+                if (current === goal) {
+                    return {
+                        success: true,
+                        path: path,
+                        cost: cost,
+                        expansions: expansions
+                    };
+                }
+
+                if (roadNetwork[current]) {
+                    roadNetwork[current].forEach(edge => {
+                        if (!visited.has(edge.neighbor)) {
+                            frontier.push({
+                                node: edge.neighbor,
+                                path: [...path, edge.neighbor],
+                                cost: cost + edge.distance,
+                                f: heuristic[edge.neighbor],
+                                parent: current
+                            });
+                        }
+                    });
+                }
+            }
+
+            return {success: false, expansions: expansions};
+        }
+
+        // A* Search
+        function aStarSearch(start) {
+            const frontier = new MinHeap();
+            frontier.push({node: start, path: [start], cost: 0, f: heuristic[start], parent: null});
+            const visited = new Set();
+            const expansions = [];
+            const bestCost = {[start]: 0};
+
+            while (!frontier.isEmpty()) {
+                const {node: current, path, cost, f, parent} = frontier.pop();
+                
+                if (visited.has(current)) continue;
+                
+                expansions.push({
+                    node: current,
+                    f: f,
+                    g: cost,
+                    h: heuristic[current],
+                    path: [...path],
+                    parent: parent
+                });
+                visited.add(current);
+
+                if (current === goal) {
+                    return {
+                        success: true,
+                        path: path,
+                        cost: cost,
+                        expansions: expansions
+                    };
+                }
+
+                if (roadNetwork[current]) {
+                    roadNetwork[current].forEach(edge => {
+                        const newCost = cost + edge.distance;
+                        
+                        if (!visited.has(edge.neighbor) && 
+                            (!bestCost[edge.neighbor] || newCost < bestCost[edge.neighbor])) {
+                            bestCost[edge.neighbor] = newCost;
+                            frontier.push({
+                                node: edge.neighbor,
+                                path: [...path, edge.neighbor],
+                                cost: newCost,
+                                f: newCost + heuristic[edge.neighbor],
+                                parent: current
+                            });
+                        }
+                    });
+                }
+            }
+
+            return {success: false, expansions: expansions};
+        }
+
+        // Min Heap
+        class MinHeap {
+            constructor() {
+                this.heap = [];
+            }
+
+            push(item) {
+                this.heap.push(item);
+                this.bubbleUp(this.heap.length - 1);
+            }
+
+            pop() {
+                if (this.heap.length === 0) return null;
+                const min = this.heap[0];
+                const end = this.heap.pop();
+                if (this.heap.length > 0) {
+                    this.heap[0] = end;
+                    this.bubbleDown(0);
+                }
+                return min;
+            }
+
+            bubbleUp(index) {
+                while (index > 0) {
+                    const parentIndex = Math.floor((index - 1) / 2);
+                    if (this.heap[index].f >= this.heap[parentIndex].f) break;
+                    [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
+                    index = parentIndex;
+                }
+            }
+
+            bubbleDown(index) {
+                while (true) {
+                    let smallest = index;
+                    const left = 2 * index + 1;
+                    const right = 2 * index + 2;
+
+                    if (left < this.heap.length && this.heap[left].f < this.heap[smallest].f) {
+                        smallest = left;
+                    }
+                    if (right < this.heap.length && this.heap[right].f < this.heap[smallest].f) {
+                        smallest = right;
+                    }
+                    if (smallest === index) break;
+
+                    [this.heap[index], this.heap[smallest]] = [this.heap[smallest], this.heap[index]];
+                    index = smallest;
+                }
+            }
+
+            isEmpty() {
+                return this.heap.length === 0;
+            }
+        }
+
+        // Animated visualization
+        async function animateSearch(algorithm, result, start, color) {
+            const speed = parseInt(document.getElementById('animationSpeed').value);
+            const progressOverlay = document.getElementById('progressOverlay');
+            const progressTitle = document.getElementById('progressTitle');
+            const progressStep = document.getElementById('progressStep');
+            const algorithmName = algorithm === 'greedy' ? 'Greedy Best-First Search' : 'A* Search';
+            
+            progressOverlay.classList.add('active');
+            progressTitle.textContent = algorithmName;
+            progressTitle.style.color = color;
+            
+            const expansionsDiv = document.getElementById(`${algorithm}Expansions`);
+            let expansionHTML = '<h4 style="margin-bottom: 10px;">Expansion Order:</h4>';
+            expansionsDiv.innerHTML = expansionHTML;
+
+            // Highlight start node
+            markers[start].setIcon(createMarkerIcon('#ff4444', 20));
+
+            // Animate each expansion
+            for (let i = 0; i < result.expansions.length; i++) {
+                const exp = result.expansions[i];
+                
+                progressStep.textContent = `Exploring ${exp.node} (${i + 1}/${result.expansions.length})`;
+                
+                const expItem = document.createElement('div');
+                expItem.className = 'expansion-item current';
+                expItem.id = `exp-${algorithm}-${i}`;
+                expItem.innerHTML = `
+                    <strong>${i + 1}. ${exp.node}</strong><br>
+                    f(n) = ${exp.f.toFixed(3)} | 
+                    ${algorithm === 'astar' ? `g(n) = ${exp.g.toFixed(2)} + ` : ''}
+                    h(n) = ${exp.h.toFixed(3)}
+                `;
+                expansionsDiv.appendChild(expItem);
+                expItem.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                
+                if (exp.node !== goal && exp.node !== start) {
+                    markers[exp.node].setIcon(createPulsingIcon('#ffaa00', 20));
+                }
+                
+                if (exp.parent) {
+                    const fromCoords = barangays[exp.parent];
+                    const toCoords = barangays[exp.node];
+                    
+                    const explorationLine = L.polyline(
+                        [[fromCoords.lat, fromCoords.lon], [toCoords.lat, toCoords.lon]],
+                        {
+                            color: '#ffaa00',
+                            weight: 3,
+                            opacity: 0.7,
+                            dashArray: '8, 8'
+                        }
+                    ).addTo(map);
+                    
+                    animationLayers.push(explorationLine);
+                    
+                    const path = explorationLine.getElement();
+                    if (path) {
+                        const length = path.getTotalLength();
+                        path.style.strokeDasharray = `${length}`;
+                        path.style.strokeDashoffset = `${length}`;
+                        
+                        setTimeout(() => {
+                            path.style.transition = `stroke-dashoffset ${speed}ms linear`;
+                            path.style.strokeDashoffset = '0';
+                        }, 50);
+                    }
+                }
+                
+                await sleep(speed);
+                
+                if (exp.node !== goal && exp.node !== start) {
+                    markers[exp.node].setIcon(createMarkerIcon('#888888', 18));
+                }
+                
+                if (animationLayers.length > 0) {
+                    const lastLine = animationLayers[animationLayers.length - 1];
+                    lastLine.setStyle({color: '#aaaaaa', opacity: 0.3});
+                }
+                
+                document.getElementById(`exp-${algorithm}-${i}`).classList.remove('current');
+            }
+
+            // Animate final path
+            if (result.success) {
+                progressStep.textContent = 'Drawing final path...';
+                
+                for (let i = 0; i < result.path.length - 1; i++) {
+                    const from = result.path[i];
+                    const to = result.path[i + 1];
+                    const fromCoords = barangays[from];
+                    const toCoords = barangays[to];
+                    
+                    const pathLine = L.polyline(
+                        [[fromCoords.lat, fromCoords.lon], [toCoords.lat, toCoords.lon]],
+                        {
+                            color: color,
+                            weight: 5,
+                            opacity: 0.9,
+                            dashArray: '12, 8'
+                        }
+                    ).addTo(map);
+                    
+                    const path = pathLine.getElement();
+                    if (path) {
+                        const length = path.getTotalLength();
+                        path.style.strokeDasharray = `${length}`;
+                        path.style.strokeDashoffset = `${length}`;
+                        
+                        setTimeout(() => {
+                            path.style.transition = `stroke-dashoffset ${speed * 0.7}ms ease-in-out`;
+                            path.style.strokeDashoffset = '0';
+                        }, 50);
+                    }
+                    
+                    polylines.push(pathLine);
+                    await sleep(speed * 0.7);
+                }
+                
+                progressStep.textContent = `✓ Path found! Cost: ${result.cost.toFixed(2)} km`;
+                await sleep(1000);
+            }
+            
+            progressOverlay.classList.remove('active');
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function runGreedy() {
+            if (isAnimating) return;
+            isAnimating = true;
+            disableButtons(true);
+            
+            const start = document.getElementById('startNode').value;
+            const result = greedyBestFirstSearch(start);
+            
+            document.getElementById('greedyResults').style.display = 'block';
+            displayMetrics('greedy', result, start);
+            
+            await animateSearch('greedy', result, start, '#f5576c');
+            
+            isAnimating = false;
+            disableButtons(false);
+        }
+
+        async function runAStar() {
+            if (isAnimating) return;
+            isAnimating = true;
+            disableButtons(true);
+            
+            const start = document.getElementById('startNode').value;
+            const result = aStarSearch(start);
+            
+            document.getElementById('astarResults').style.display = 'block';
+            displayMetrics('astar', result, start);
+            
+            await animateSearch('astar', result, start, '#00f2fe');
+            
+            isAnimating = false;
+            disableButtons(false);
+        }
+
+        function displayMetrics(algorithm, result, start) {
+            const metricsDiv = document.getElementById(`${algorithm}Metrics`);
+            
+            metricsDiv.innerHTML = `
+                <div class="metric">
+                    <span class="metric-label">Start:</span>
+                    <span class="metric-value">${start}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Goal:</span>
+                    <span class="metric-value">${goal}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Success:</span>
+                    <span class="metric-value">${result.success ? '✓ Yes' : '✗ No'}</span>
+                </div>
+                ${result.success ? `
+                    <div class="metric">
+                        <span class="metric-label">Path Length:</span>
+                        <span class="metric-value">${result.path.length} barangays</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Path Cost:</span>
+                        <span class="metric-value">${result.cost.toFixed(2)} km</span>
+                    </div>
+                ` : ''}
+                <div class="metric">
+                    <span class="metric-label">Nodes Expanded:</span>
+                    <span class="metric-value">${result.expansions.length}</span>
+                </div>
+            `;
+        }
+
+        function disableButtons(disabled) {
+            document.getElementById('btnGreedy').disabled = disabled;
+            document.getElementById('btnAstar').disabled = disabled;
+            document.getElementById('startNode').disabled = disabled;
+        }
+
+        function resetVisualization() {
+            if (isAnimating) return;
+            
+            animationLayers.forEach(layer => map.removeLayer(layer));
+            animationLayers = [];
+            
+            polylines.forEach(p => map.removeLayer(p));
+            polylines = [];
+
+            document.getElementById('greedyResults').style.display = 'none';
+            document.getElementById('astarResults').style.display = 'none';
+            document.getElementById('progressOverlay').classList.remove('active');
+
+            Object.keys(barangays).forEach(name => {
+                const isGoal = name === goal;
+                const color = isGoal ? 'green' : 'blue';
+                markers[name].setIcon(createMarkerIcon(color, 15));
+            });
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
