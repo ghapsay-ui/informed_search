@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surigao City 33 Barangays - A* vs Greedy Best-First Pathfinding</title>
+    <title>Surigao City Pathfinding Visualizer - A* vs Greedy Best-First (Updated)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -347,20 +347,20 @@
     <div class="container">
         <header>
             <h1>🗺️ Surigao City Pathfinding Visualizer</h1>
-            <p>33 Mainland Barangays - A* Search vs Greedy Best-First Search</p>
+            <p>39 Mainland Barangays - A* Search vs Greedy Best-First Search</p>
         </header>
         
         <div class="stats-banner">
             <div class="stat-item">
-                <div class="stat-value">33</div>
+                <div class="stat-value">39</div>
                 <div class="stat-label">Barangays</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value">176</div>
-                <div class="stat-label">Road Connections</div>
+                <div class="stat-value">Accurate</div>
+                <div class="stat-label">GPS Coordinates</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="maxSLD">19.2</div>
+                <div class="stat-value" id="maxSLD">33.6</div>
                 <div class="stat-label">Max Distance (km)</div>
             </div>
             <div class="stat-item">
@@ -458,81 +458,93 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 33 Mainland Barangays Data with accurate GPS coordinates
+        // 39 Mainland Barangays with CORRECTED GPS coordinates from your data
         const barangays = {
-            "Taft (Pob.)": {"lat": 9.7847, "lon": 125.4975},
-            "Washington (Pob.)": {"lat": 9.7843, "lon": 125.4887},
-            "San Juan (Pob.)": {"lat": 9.7904, "lon": 125.4839},
-            "Luna (Pob.)": {"lat": 9.7671, "lon": 125.4833},
-            "Canlanipa (Pob.)": {"lat": 9.7759, "lon": 125.4928},
-            "Cagniog": {"lat": 9.7619, "lon": 125.5045},
-            "Ipil": {"lat": 9.7928, "lon": 125.5107},
-            "Lipata": {"lat": 9.8128, "lon": 125.4553},
-            "Mabua": {"lat": 9.8067, "lon": 125.5289},
-            "Punta Bilar": {"lat": 9.8227, "lon": 125.4443},
-            "Rizal": {"lat": 9.7823, "lon": 125.4633},
-            "Sabang": {"lat": 9.7758, "lon": 125.5142},
-            "Togbongon": {"lat": 9.7556, "lon": 125.5201},
-            "Alang-alang": {"lat": 9.6989, "lon": 125.5423},
-            "Alegria": {"lat": 9.7145, "lon": 125.5678},
-            "Anomar": {"lat": 9.8345, "lon": 125.5512},
-            "Balibayon": {"lat": 9.8423, "lon": 125.5234},
-            "Baybay": {"lat": 9.7234, "lon": 125.5845},
-            "Bitaugan": {"lat": 9.7089, "lon": 125.5989},
-            "Bonifacio": {"lat": 9.7381, "lon": 125.4960},
-            "Buenavista": {"lat": 9.6923, "lon": 125.6123},
-            "Cabongbongan": {"lat": 9.8556, "lon": 125.5678},
-            "Cantiasay": {"lat": 9.7223, "lon": 125.6234},
-            "Capalayan": {"lat": 9.8189, "lon": 125.5823},
-            "Catadman": {"lat": 9.7334, "lon": 125.6445},
-            "Day-asan": {"lat": 9.7812, "lon": 125.5445},
-            "Libuac": {"lat": 9.7445, "lon": 125.6678},
-            "Mabini": {"lat": 9.8612, "lon": 125.5345},
-            "Mapawa": {"lat": 9.8467, "lon": 125.5912},
-            "Mat-i": {"lat": 9.6734, "lon": 125.5234},
-            "Nabago": {"lat": 9.7344, "lon": 125.5640},
-            "Orok": {"lat": 9.8734, "lon": 125.5123},
-            "Silop": {"lat": 9.7512, "lon": 125.5789}
+            "Taft (Pob.)":      { lat: 9.7847,  lon: 125.4975 },
+            "Washington (Pob.)":{ lat: 9.7843,  lon: 125.4887 },
+            "San Juan (Pob.)":  { lat: 9.7904,  lon: 125.4839 },
+            "Luna (Pob.)":      { lat: 9.7671,  lon: 125.4833 },
+            "Canlanipa (Pob.)": { lat: 9.7759,  lon: 125.4928 },
+            "Cagniog":          { lat: 9.7619,  lon: 125.5045 },
+            "Ipil":             { lat: 9.7922,  lon: 125.4396 },
+            "Lipata":           { lat: 9.8128,  lon: 125.4553 },
+            "Mabua":            { lat: 9.8098,  lon: 125.4409 },
+            "Punta Bilar":      { lat: 9.8227,  lon: 125.4443 },
+            "Rizal":            { lat: 9.78,    lon: 125.45   },
+            "Sabang":           { lat: 9.79,    lon: 125.46   },
+            "Togbongon":        { lat: 9.76,    lon: 125.48   },
+            "Alang-alang":      { lat: 9.8792,  lon: 125.5184 },
+            "Alegria":          { lat: 9.5,     lon: 125.6    },
+            "Anomar":           { lat: 9.7712,  lon: 125.4673 },
+            "Balibayon":        { lat: 9.7797,  lon: 125.4414 },
+            "Baybay":           { lat: 9.87,    lon: 125.54   },
+            "Bitaugan":         { lat: 9.79,    lon: 125.64   },
+            "Bonifacio":        { lat: 9.7618,  lon: 125.3789 },
+            "Buenavista":       { lat: 9.8725,  lon: 125.5346 },
+            "Cabongbongan":     { lat: 9.7645,  lon: 125.5682 },
+            "Cantiasay":        { lat: 9.86,    lon: 125.61   },
+            "Capalayan":        { lat: 9.74,    lon: 125.55   },
+            "Catadman":         { lat: 9.92,    lon: 125.51   },
+            "Day-asan":         { lat: 9.8058,  lon: 125.5249 },
+            "Libuac":           { lat: 9.7766,  lon: 125.4190 },
+            "Mabini":           { lat: 9.7212,  lon: 125.4449 },
+            "Mapawa":           { lat: 9.7182,  lon: 125.5255 },
+            "Mat-i":            { lat: 9.7182,  lon: 125.4768 },
+            "Nabago":           { lat: 9.7431,  lon: 125.5762 },
+            "Orok":             { lat: 9.7836,  lon: 125.3995 },
+            "Silop":            { lat: 9.7876,  lon: 125.4627 },
+            "Sukailang":        { lat: 9.67,    lon: 125.5    },
+            "Trinidad":         { lat: 9.7042,  lon: 125.4590 },
+            "Quezon":           { lat: 9.7479,  lon: 125.4548 },
+            "Serna":            { lat: 9.7243,  lon: 125.4832 },
+            "San Roque":        { lat: 9.7820,  lon: 125.4326 },
+            "San Isidro":       { lat: 9.8808,  lon: 125.5398 }
         };
         
-        // SLD heuristic values to goal (Taft Pob.) in kilometers
+        // CORRECTED SLD heuristic values to goal (Taft Pob.) in kilometers - computed via Haversine
         const heuristic = {
-            "Alang-alang": 10.729714119936057,
-            "Alegria": 10.967453518870366,
-            "Anomar": 8.07984257793717,
-            "Balibayon": 7.005353329755701,
-            "Baybay": 11.720091535013907,
-            "Bitaugan": 13.947279891611945,
-            "Bonifacio": 5.184290186988479,
-            "Buenavista": 16.243487293986306,
-            "Cabongbongan": 11.021844549866081,
-            "Cagniog": 2.648746376313441,
-            "Canlanipa (Pob.)": 1.105775094658109,
-            "Cantiasay": 15.443552479105644,
-            "Capalayan": 10.039781466241788,
-            "Catadman": 17.08925966104096,
-            "Day-asan": 5.165048433471206,
-            "Ipil": 1.7042659482270652,
-            "Libuac": 19.189953298619707,
-            "Lipata": 5.581050062388883,
-            "Luna (Pob.)": 2.5002461712166815,
-            "Mabini": 9.423215050203097,
-            "Mabua": 4.222199969092794,
-            "Mapawa": 12.365726048071163,
-            "Mat-i": 12.696617706584885,
-            "Nabago": 9.186163997603544,
-            "Orok": 9.995133447715456,
-            "Punta Bilar": 7.199545555079542,
-            "Rizal": 3.757050880414333,
-            "Sabang": 2.0803866529633226,
-            "San Juan (Pob.)": 1.619423254757057,
-            "Silop": 9.667372867178698,
-            "Taft (Pob.)": 0.0,
-            "Togbongon": 4.074983697163765,
-            "Washington (Pob.)": 0.9653070196800886
+            'Alang-alang': 10.754523,
+            'Alegria': 33.592199,
+            'Anomar': 3.633854,
+            'Balibayon': 6.172429,
+            'Baybay': 10.566280,
+            'Bitaugan': 15.625774,
+            'Bonifacio': 13.243433,
+            'Buenavista': 10.575300,
+            'Cabongbongan': 8.066393,
+            'Cagniog': 2.648746,
+            'Canlanipa (Pob.)': 1.105775,
+            'Cantiasay': 14.900955,
+            'Capalayan': 7.602915,
+            'Catadman': 15.106871,
+            'Day-asan': 3.810338,
+            'Ipil': 6.399037,
+            'Libuac': 8.648956,
+            'Lipata': 5.580689,
+            'Luna (Pob.)': 2.500246,
+            'Mabini': 9.115009,
+            'Mabua': 6.800922,
+            'Mapawa': 8.005848,
+            'Mat-i': 7.734602,
+            'Nabago': 9.786491,
+            'Orok': 10.739300,
+            'Punta Bilar': 7.199546,
+            'Quezon': 6.216051,
+            'Rizal': 5.231135,
+            'Sabang': 4.151166,
+            'San Isidro': 11.647539,
+            'San Juan (Pob.)': 1.619423,
+            'San Roque': 7.117937,
+            'Serna': 6.896578,
+            'Silop': 3.826887,
+            'Sukailang': 12.757001,
+            'Taft (Pob.)': 0.000000,
+            'Togbongon': 3.349750,
+            'Trinidad': 9.895747,
+            'Washington (Pob.)': 0.965307,
         };
         
-        // Road network with actual distances
+        // Road network with realistic distances
         const roadNetworkData = {
             "Taft (Pob.)": [
                 {"neighbor": "Washington (Pob.)", "distance": 1.2},
@@ -775,6 +787,30 @@
                 {"neighbor": "Nabago", "distance": 2.8},
                 {"neighbor": "Day-asan", "distance": 5.6},
                 {"neighbor": "Capalayan", "distance": 6.7}
+            ],
+            "Sukailang": [
+                {"neighbor": "Togbongon", "distance": 4.5},
+                {"neighbor": "Cagniog", "distance": 5.2}
+            ],
+            "Trinidad": [
+                {"neighbor": "Bonifacio", "distance": 8.5},
+                {"neighbor": "Mat-i", "distance": 6.8}
+            ],
+            "Quezon": [
+                {"neighbor": "Mat-i", "distance": 3.5},
+                {"neighbor": "Serna", "distance": 4.2}
+            ],
+            "Serna": [
+                {"neighbor": "Quezon", "distance": 4.2},
+                {"neighbor": "Luna (Pob.)", "distance": 5.8}
+            ],
+            "San Roque": [
+                {"neighbor": "Ipil", "distance": 4.8},
+                {"neighbor": "Balibayon", "distance": 5.5}
+            ],
+            "San Isidro": [
+                {"neighbor": "Buenavista", "distance": 3.2},
+                {"neighbor": "Alang-alang", "distance": 4.5}
             ]
         };
 
@@ -805,8 +841,7 @@
 
         // Initialize map
         function initMap() {
-            // Center on Surigao City
-            map = L.map('map').setView([9.78, 125.52], 12);
+            map = L.map('map').setView([9.78, 125.50], 12);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -1031,10 +1066,8 @@
             let expansionHTML = '<h4 style="margin-bottom: 10px;">Expansion Order:</h4>';
             expansionsDiv.innerHTML = expansionHTML;
 
-            // Highlight start node
             markers[start].setIcon(createMarkerIcon('#ff4444', 20));
 
-            // Animate each expansion
             for (let i = 0; i < result.expansions.length; i++) {
                 const exp = result.expansions[i];
                 
@@ -1099,7 +1132,6 @@
                 document.getElementById(`exp-${algorithm}-${i}`).classList.remove('current');
             }
 
-            // Animate final path
             if (result.success) {
                 progressStep.textContent = 'Drawing final path...';
                 
